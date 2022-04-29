@@ -1,0 +1,8 @@
+# Private config
+.env
+
+# Composer stuff
+/vendor
+
+# IDE stuff
+/.idea

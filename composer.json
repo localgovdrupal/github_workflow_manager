@@ -1,0 +1,30 @@
+{
+    "name": "localgovdrupal/github_actions_conf",
+    "description": "Manage GitHub Action configuration management.",
+    "type": "project",
+    "homepage": "https://github.com/localgovdrupal/github_actions_config",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "Stephen Cox",
+            "email": "stephen@agile.coop"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "LocalGovDrupal\\GithubWorkflowManager\\": "src/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "require": {
+        "php": ">=8.0.0",
+        "ext-json": "*",
+        "guzzlehttp/guzzle": "^7.0.1",
+        "http-interop/http-factory-guzzle": "^1.0",
+        "knplabs/github-api": "^3.0",
+        "twig/twig": "^3.0",
+        "vlucas/phpdotenv": "^5.4"
+    }
+}
