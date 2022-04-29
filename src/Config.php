@@ -30,6 +30,7 @@ class Config {
       'base_projects' => [
         'localgov_project' => [
           'template' => 'test_localgov.yml',
+          'workflow_file' => 'test.yml',
           'versions' => [
             '2.x',
           ],

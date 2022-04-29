@@ -75,6 +75,7 @@ class WorkflowUpdater {
     foreach($base_project_config as $base_project => $config) {
 
       // Get organization packages required by base project.
+      $this->log('Fetching composer dependency tree for ' . $base_project);
       $this->projects[$base_project] = [];
       foreach ($config['versions'] as $base_version) {
 
@@ -97,16 +98,27 @@ class WorkflowUpdater {
 
       // Update workflows for each project version.
       foreach ($this->projects[$base_project] as $project_versions) {
-        $workflows = [];
         foreach ($project_versions as $project_version => $project) {
 
           // Generate workflow.
           $template = $config['template'];
+          $workflow_file = $config['workflow_file'];
           $this->renderer->set_variables($project);
           $workflow = $this->renderer->render($template);
-          print_r($workflow);
 
-          // Get current workflow.
+          // Compare with current workflow.
+          try {
+            $current_workflow = $this->fetch_file($project['repo'], '.github/workflows/' . $workflow_file, $project_version);
+            if ($current_workflow == $workflow) {
+              continue;
+            }
+          }
+          catch (RuntimeException $e) {
+            // File not found so continue with update.
+          }
+
+          // Update workflows for project.
+
 
         }
       }
@@ -146,8 +158,7 @@ class WorkflowUpdater {
 
     try {
       // Get composer version.
-      $contents = $this->client->repo()->contents()->show($this->organization, $repo, 'composer.json', $version);
-      $composer_json = base64_decode($contents['content']);
+      $composer_json = $this->fetch_file($repo, 'composer.json', $version);
       $composer = json_decode($composer_json, TRUE);
 
       // Set version info.
@@ -163,7 +174,7 @@ class WorkflowUpdater {
             $r = str_replace($this->organization . '/', '', $package);
             $v = $this->version_to_branch($v);
             if (!in_array($r, array_keys($projects))) {
-              //$projects += $this->get_composer_config($r, $v, $projects);
+              $projects += $this->get_composer_config($r, $v, $projects);
             }
           }
         }
@@ -174,6 +185,40 @@ class WorkflowUpdater {
     }
 
     return $projects;
+  }
+
+  /**
+   * Get file contents from GitHub.
+   *
+   * @param string $repo
+   *   The name of the repository to get file from.
+   * @param string $path
+   *   Path to file or directory.
+   * @param string $branch
+   *   Branch or commit reference to get file from.
+   *
+   * @return string
+   *   Return the file contents.
+   */
+  protected function fetch_file($repo, $path, $branch) {
+
+    $contents = $this->client->repo()->contents()->show($this->organization, $repo, $path, $branch);
+    $file_contents = base64_decode($contents['content']);
+
+    return $file_contents;
+  }
+
+  /**
+   * Log message.
+   *
+   * @param string $message
+   *   Message to log
+   * @param string level
+   *   Message level to log. Defaults NOTICE
+   */
+  protected function log(string $message, string $level = 'NOTICE'): void {
+
+    print $message . "\n";
   }
 
   /**
