@@ -21,7 +21,7 @@ class Config {
     $this->config = [
       'organization' => 'localgovdrupal',
       'drupal_versions' => [
-        '9.3',
+        '~9.3',
       ],
       'php_versions' => [
         '7.4',

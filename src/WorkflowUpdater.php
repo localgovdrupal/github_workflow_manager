@@ -97,12 +97,17 @@ class WorkflowUpdater {
 
       // Update workflows for each project version.
       foreach ($this->projects[$base_project] as $project_versions) {
+        $workflows = [];
         foreach ($project_versions as $project_version => $project) {
 
+          // Generate workflow.
           $template = $config['template'];
           $this->renderer->set_variables($project);
           $workflow = $this->renderer->render($template);
           print_r($workflow);
+
+          // Get current workflow.
+
         }
       }
     }

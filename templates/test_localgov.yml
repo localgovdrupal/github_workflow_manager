@@ -1,15 +1,15 @@
-name: Test LocalGov Drupal {{ project_name }} {{ project_type }}
+name: Test {{ project_name }} {{ project_type }}
 
 on:
   push:
     branches:
 {% for version in package_versions %}
-      - {{ version }}
+      - '{{ version }}'
 {% endfor %}
   pull_request:
     branches:
 {% for version in package_versions %}
-      - {{ version }}
+      - '{{ version }}'
 {% endfor %}
 
 env:
@@ -27,15 +27,15 @@ jobs:
       matrix:
         localgov-version:
 {% for version in localgov_versions %}
-          - {{ version }}
+          - '{{ version }}'
 {% endfor %}
         drupal-version:
 {% for version in drupal_versions %}
-          - {{ version }}
+          - '{{ version }}'
 {% endfor %}
         php-version:
 {% for version in php_versions %}
-          - {{ version }}
+          - '{{ version }}'
 {% endfor %}
 
     steps:
@@ -70,31 +70,35 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ./html
-          key: localgov-build-${{ matrix.localgov-version }}-${{ matrix.drupal-version }}-${{ matrix.php-version }}-${{ github.run_id }}-${{ secrets.CACHE_VERSION }}
+          key: localgov-build-${{ '{{' }} matrix.localgov-version }}-${{ '{{' }} matrix.drupal-version {{ '}}' }}-${{ '{{' }} matrix.php-version }}-${{ '{{' }} github.run_id {{ '}}' }}-${{ '{{' }} secrets.CACHE_VERSION {{ '}}' }}
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: ${{ matrix.php-version }}
+          php-version: ${{ '{{' }} matrix.php-version {{ '}}' }}
 
       - name: Clone drupal_container
         uses: actions/checkout@v2
         with:
           repository: localgovdrupal/drupal-container
-          ref: php${{ matrix.php-version }}
+          ref: php${{ '{{' }} matrix.php-version {{ '}}' }}
 
       - name: Create LocalGov Drupal project
+{% if  project_type == 'project' %}
+        run: composer create-project --stability dev localgovdrupal/localgov-project:${COMPOSER_REF} ./html
+{% else %}
         run: |
-          composer create-project --stability dev --no-install localgovdrupal/localgov-project ./html "${{ matrix.localgov-version }}"
-          composer --working-dir=./html require --no-install localgovdrupal/localgov:${{ matrix.localgov-version }}-dev
-          composer --working-dir=./html require --no-install drupal/core-recommended:${{ matrix.drupal-version }} drupal/core-composer-scaffold:${{ matrix.drupal-version }} drupal/core-project-message:${{ matrix.drupal-version }} drupal/core-dev:${{ matrix.drupal-version }}
+          composer create-project --stability dev --no-install localgovdrupal/localgov-project ./html "${{ '{{' }} matrix.localgov-version {{ '}}' }}"
+          composer --working-dir=./html require --no-install localgovdrupal/localgov:${{ '{{' }} matrix.localgov-version {{ '}}' }}-dev
+          composer --working-dir=./html require --no-install drupal/core-recommended:${{ '{{' }} matrix.drupal-version {{ '}}' }} drupal/core-composer-scaffold:${{ '{{' }} matrix.drupal-version {{ '}}' }} drupal/core-project-message:${{ '{{' }} matrix.drupal-version {{ '}}' }} drupal/core-dev:${{ '{{' }} matrix.drupal-version {{ '}}' }}
           composer --working-dir=./html install
 
       - name: Obtain the test target from the repo that triggered this workflow
         run: |
           composer --working-dir=html config repositories.1 vcs git@github.com:${LOCALGOV_DRUPAL_PROJECT}.git
-          composer global config github-oauth.github.com ${{ github.token }}
+          composer global config github-oauth.github.com ${{ '{{' }} github.token {{ '}}' }}
           composer --working-dir=./html require --with-all-dependencies ${LOCALGOV_DRUPAL_PROJECT}:"${COMPOSER_REF} as ${LATEST_RELEASE}"
+{% endif %}
 
   phpcs:
     name: Coding standards checks
@@ -106,15 +110,15 @@ jobs:
       matrix:
         localgov-version:
 {% for version in localgov_versions %}
-          - {{ version }}
+          - '{{ version }}'
 {% endfor %}
         drupal-version:
 {% for version in drupal_versions %}
-          - {{ version }}
+          - '{{ version }}'
 {% endfor %}
         php-version:
 {% for version in php_versions %}
-          - {{ version }}
+          - '{{ version }}'
 {% endfor %}
 
     steps:
@@ -123,14 +127,14 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ./html
-          key: localgov-build-${{ matrix.localgov-version }}-${{ matrix.drupal-version }}-${{ matrix.php-version }}-${{ github.run_id }}-${{ secrets.CACHE_VERSION }}
+          key: localgov-build-${{ '{{' }} matrix.localgov-version }}-${{ '{{' }} matrix.drupal-version {{ '}}' }}-${{ '{{' }} matrix.php-version }}-${{ '{{' }} github.run_id {{ '}}' }}-${{ '{{' }} secrets.CACHE_VERSION {{ '}}' }}
           restore-keys: |
-            localgov-build-${{ matrix.localgov-version }}-${{ matrix.drupal-version }}-${{ matrix.php-version }}-
+            localgov-build-${{ '{{' }} matrix.localgov-version {{ '}}' }}-${{ '{{' }} matrix.drupal-version {{ '}}' }}-${{ '{{' }} matrix.php-version {{ '}}' }}-
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: ${{ matrix.php-version }}
+          php-version: ${{ '{{' }} matrix.php-version {{ '}}' }}
 
       - name: Run coding standards checks
         run: |
@@ -147,15 +151,15 @@ jobs:
       matrix:
         localgov-version:
 {% for version in localgov_versions %}
-          - {{ version }}
+          - '{{ version }}'
 {% endfor %}
         drupal-version:
 {% for version in drupal_versions %}
-          - {{ version }}
+          - '{{ version }}'
 {% endfor %}
         php-version:
 {% for version in php_versions %}
-          - {{ version }}
+          - '{{ version }}'
 {% endfor %}
 
     steps:
@@ -164,19 +168,19 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ./html
-          key: localgov-build-${{ matrix.localgov-version }}-${{ matrix.drupal-version }}-${{ matrix.php-version }}-${{ github.run_id }}-${{ secrets.CACHE_VERSION }}
+          key: localgov-build-${{ '{{' }} matrix.localgov-version }}-${{ '{{' }} matrix.drupal-version {{ '}}' }}-${{ '{{' }} matrix.php-version }}-${{ '{{' }} github.run_id {{ '}}' }}-${{ '{{' }} secrets.CACHE_VERSION {{ '}}' }}
           restore-keys: |
-            localgov-build-${{ matrix.localgov-version }}-${{ matrix.drupal-version }}-${{ matrix.php-version }}-
+            localgov-build-${{ '{{' }} matrix.localgov-version {{ '}}' }}-${{ '{{' }} matrix.drupal-version {{ '}}' }}-${{ '{{' }} matrix.php-version {{ '}}' }}-
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: ${{ matrix.php-version }}
+          php-version: ${{ '{{' }} matrix.php-version {{ '}}' }}
 
       - name: Run deprecated code checks
         run: |
           cd html
-          ./bin/phpstan analyse -c ./phpstan.neon ${LOCALGOV_DRUPAL_PROJECT_PATH}
+          ./bin/phpstan analyse -c ./phpstan.neon {% if project_type == 'project' %}./web/modules/contrib/localgov* ./web/profiles/contrib/localgov* ./web/themes/contrib/localgov*{% else %}${LOCALGOV_DRUPAL_PROJECT_PATH}{% endif %}
 
   phpunit:
     name: PHPUnit tests
@@ -188,15 +192,15 @@ jobs:
       matrix:
         localgov-version:
 {% for version in localgov_versions %}
-          - {{ version }}
+          - '{{ version }}'
 {% endfor %}
         drupal-version:
 {% for version in drupal_versions %}
-          - {{ version }}
+          - '{{ version }}'
 {% endfor %}
         php-version:
 {% for version in php_versions %}
-          - {{ version }}
+          - '{{ version }}'
 {% endfor %}
 
     steps:
@@ -205,15 +209,15 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: localgovdrupal/drupal-container
-          ref: php${{ matrix.php-version }}
+          ref: php${{ '{{' }} matrix.php-version {{ '}}' }}
 
       - name: Cached workspace
         uses: actions/cache@v2
         with:
           path: ./html
-          key: localgov-build-${{ matrix.localgov-version }}-${{ matrix.drupal-version }}-${{ matrix.php-version }}-${{ github.run_id }}-${{ secrets.CACHE_VERSION }}
+          key: localgov-build-${{ '{{' }} matrix.localgov-version }}-${{ '{{' }} matrix.drupal-version {{ '}}' }}-${{ '{{' }} matrix.php-version }}-${{ '{{' }} github.run_id {{ '}}' }}-${{ '{{' }} secrets.CACHE_VERSION {{ '}}' }}
           restore-keys: |
-            localgov-build-${{ matrix.localgov-version }}-${{ matrix.drupal-version }}-${{ matrix.php-version }}-
+            localgov-build-${{ '{{' }} matrix.localgov-version {{ '}}' }}-${{ '{{' }} matrix.drupal-version {{ '}}' }}-${{ '{{' }} matrix.php-version {{ '}}' }}-
 
       - name: Start Docker environment
         run: docker-compose -f docker-compose.yml up -d
@@ -223,4 +227,4 @@ jobs:
           mkdir -p ./html/web/sites/simpletest && chmod 777 ./html/web/sites/simpletest
           sed -i "s#http://localgov.lndo.site#http://drupal#" ./html/phpunit.xml.dist
           docker exec -t drupal bash -c 'chown docker:docker -R /var/www/html'
-          docker exec -u docker -t drupal bash -c "cd /var/www/html && ./bin/paratest --processes=4 ${LOCALGOV_DRUPAL_PROJECT_PATH}"
+          docker exec -u docker -t drupal bash -c "cd /var/www/html && ./bin/paratest --processes=4 {{ project_path }}"
