@@ -16,7 +16,7 @@ $dotenv->load();
 $github_access_token = $_ENV['GITHUB_ACCESS_TOKEN'];
 
 // Load config.
-$config = new Config();
+$config = new Config(__DIR__ . '/config.yml');
 
 // Update workflows.
 $updater = new WorkflowUpdater($github_access_token, $config);

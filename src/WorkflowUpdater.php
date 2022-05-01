@@ -66,7 +66,7 @@ class WorkflowUpdater {
 
     // Initialise config.
     $this->config = $config;
-    $this->branch = $this->config->get('default_branch_name');
+    $this->branch = $this->config->get_branch();
     $this->organization = $this->config->get('organization');
 
     // Initialise template renderer.
@@ -262,6 +262,7 @@ class WorkflowUpdater {
       $projects[$repo]['project_name'] = $composer['name'] ?? '';
       $projects[$repo]['project_type'] = $composer['type'] ?? '';
       $projects[$repo]['package_versions'] = isset($projects[$repo]['package_versions']) ? $projects[$repo]['package_versions'] + [$version] : [$version];
+      $this->log('Found ' . $repo);
 
       // Recurse over required packages.
       if (isset($composer['require'])) {

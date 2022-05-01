@@ -2,8 +2,10 @@
 
 namespace LocalGovDrupal\GithubWorkflowManager;
 
+use Symfony\Component\Yaml\Yaml;
+
 /**
- * Stupidly simple config wrapper.
+ * Simple config wrapper.
  */
 class Config {
 
@@ -14,30 +16,13 @@ class Config {
 
   /**
    * Initialise a config object.
+   *
+   * @param $path string
+   *   Path to YAML config file.
    */
-  function __construct() {
+  function __construct(string $path) {
 
-    // @todo Don't hard code this stuff.
-    $this->config = [
-      'organization' => 'localgovdrupal',
-      'drupal_versions' => [
-        '~9.3',
-      ],
-      'php_versions' => [
-        '7.4',
-        '8.1',
-      ],
-      'base_projects' => [
-        'localgov_project' => [
-          'template' => 'test_localgov.yml',
-          'workflow_file' => '.github/workflows/test.yml',
-          'versions' => [
-            '2.x',
-          ],
-        ],
-      ],
-      'default_branch_name' => 'fix/github-workflow-update-' . date('Y-m-d'),
-    ];
+    $this->config = Yaml::parseFile($path);
   }
 
   /**
@@ -56,6 +41,16 @@ class Config {
     }
 
     return NULL;
+  }
+
+  /**
+   * Get branch name.
+   *
+   * @return string
+   */
+  public function get_branch(): string {
+
+    return $this->config['default_branch_prefix'] . date($this->config['default_branch_date_prefix']);
   }
 
 }
