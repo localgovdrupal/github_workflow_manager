@@ -30,13 +30,13 @@ class Config {
       'base_projects' => [
         'localgov_project' => [
           'template' => 'test_localgov.yml',
-          'workflow_file' => 'test.yml',
+          'workflow_file' => '.github/workflows/test.yml',
           'versions' => [
             '2.x',
           ],
         ],
       ],
-      'default_branch_name' => 'github-actions-conf-' . date('Y-m-d-His'),
+      'default_branch_name' => 'fix/github-workflow-update-' . date('Y-m-d'),
     ];
   }
 

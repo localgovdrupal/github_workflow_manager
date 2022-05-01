@@ -15,6 +15,13 @@ use LocalGovDrupal\GithubWorkflowManager\TemplateRenderer\TemplateRendererInterf
 class WorkflowUpdater {
 
   /**
+   * Branch name for changes to workflow.
+   *
+   * @var string
+   */
+  protected string $branch;
+
+  /**
    * GitHub client.
    *
    * @var \Github\Client
@@ -59,6 +66,7 @@ class WorkflowUpdater {
 
     // Initialise config.
     $this->config = $config;
+    $this->branch = $this->config->get('default_branch_name');
     $this->organization = $this->config->get('organization');
 
     // Initialise template renderer.
@@ -108,7 +116,7 @@ class WorkflowUpdater {
 
           // Compare with current workflow.
           try {
-            $current_workflow = $this->fetch_file($project['repo'], '.github/workflows/' . $workflow_file, $project_version);
+            $current_workflow = $this->fetch_file($project['repo'], $workflow_file, $project_version);
             if ($current_workflow == $workflow) {
               continue;
             }
@@ -117,9 +125,10 @@ class WorkflowUpdater {
             // File not found so continue with update.
           }
 
-          // Update workflows for project.
-
-
+          // Update workflow and create PR for project.
+          $this->create_branch($project['repo'], $this->branch, $project_version);
+          $this->update_file($project['repo'], $workflow_file, $this->branch, $workflow, 'Updated GitHub workflow');
+          $this->create_pull_request($project['repo'], $project_version, $this->branch, 'Update workflow on ' . $project_version . ' branch');
         }
       }
     }
@@ -139,6 +148,93 @@ class WorkflowUpdater {
     $client->authenticate($github_access_token, NULL, AuthMethod::ACCESS_TOKEN);
 
     return $client;
+  }
+
+  /**
+   * Create branch in repo.
+   *
+   * @param string $repo
+   *   The name of the repository to create branch in.
+   * @param string $branch
+   *   Branch name to create.
+   * @param string $source
+   *   Source branch to create branch from.
+   */
+  protected function create_branch(string $repo, string $branch, string $source): void {
+
+    try {
+
+      // Check if branch exists.
+      $this->client->git()->references()->show($this->organization, $repo, 'heads/' . $branch);
+    }
+    catch (RuntimeException $e) {
+
+      // Create branch.
+      $source_info = $this->client->git()->references()->show($this->organization, $repo, 'heads/' . $source);
+      $params = [
+        'ref' => 'refs/heads/' . $branch,
+        'sha' => $source_info['object']['sha'],
+      ];
+      $this->client->git()->references()->create($this->organization, $repo, $params);
+      $this->log('Created ' . $branch . ' branch in ' . $repo);
+    }
+  }
+
+  /**
+   * Create pull request.
+   *
+   * @param $repo string
+   *   Name of repository to create pull request in.
+   * @param $base string
+   *   Branch to merge into.
+   * @param $branch string
+   *   Branch to be merged.
+   * @param $title string
+   *   Title of pull request.
+   * @param $body string
+   *   Body of pull request.
+   */
+  protected function create_pull_request(string $repo, string $base, string $branch, string $title, string $body = ''): void {
+
+    // Check if PR between $base and $branch already exists.
+    $params = [
+      'base' => $base,
+      'head' => $this->organization . ':' . $branch,
+    ];
+    $pr = $this->client->pullRequest()->all($this->organization, $repo, $params);
+    if (empty($pr)) {
+
+      // Create PR.
+      $params = [
+        'base' => $base,
+        'head' => $branch,
+        'title' => $title,
+        'body' => $body,
+      ];
+      $this->client->pullRequest()->create($this->organization, $repo, $params);
+      $this->log('Created pull request in ' . $repo);
+    }
+  }
+
+  /**
+   * Get file contents from GitHub.
+   *
+   * @param string $repo
+   *   The name of the repository to get file from.
+   * @param string $path
+   *   Path to file or directory.
+   * @param string $branch
+   *   Branch or commit reference to get file from.
+   *
+   * @return string
+   *   Return the file contents.
+   */
+  protected function fetch_file(string $repo, string $path, string $branch): string {
+
+    $contents = $this->client->repo()->contents()->show($this->organization, $repo, $path, $branch);
+    $file_contents = base64_decode($contents['content']);
+
+    return $file_contents;
   }
 
   /**
@@ -188,27 +284,6 @@ class WorkflowUpdater {
   }
 
   /**
-   * Get file contents from GitHub.
-   *
-   * @param string $repo
-   *   The name of the repository to get file from.
-   * @param string $path
-   *   Path to file or directory.
-   * @param string $branch
-   *   Branch or commit reference to get file from.
-   *
-   * @return string
-   *   Return the file contents.
-   */
-  protected function fetch_file($repo, $path, $branch) {
-
-    $contents = $this->client->repo()->contents()->show($this->organization, $repo, $path, $branch);
-    $file_contents = base64_decode($contents['content']);
-
-    return $file_contents;
-  }
-
-  /**
    * Log message.
    *
    * @param string $message
@@ -219,6 +294,40 @@ class WorkflowUpdater {
   protected function log(string $message, string $level = 'NOTICE'): void {
 
     print $message . "\n";
+  }
+
+  /**
+   * Update file in GitHub, creating file if it doesn't already exist.
+   *
+   * @param string $repo
+   *   The name of the repository to get file from.
+   * @param string $path
+   *   Path to file or directory.
+   * @param string $branch
+   *   Branch or commit reference to get file from.
+   * @param string $content
+   *   Content of the file.
+   * @param string $message
+   *   Commit message.
+   */
+  protected function update_file(string $repo, string $path, string $branch, string $content, string $message): void {
+
+    try {
+
+      // Update file.
+      $file_info = $this->client->repo()->contents()->show($this->organization, $repo, $path, $branch);
+      $current_content = base64_decode($file_info['content']);
+      if ($content != $current_content) {
+        $this->client->repo()->contents()->update($this->organization, $repo, $path, $content, $message, $file_info['sha'], $branch);
+        $this->log('Updated workflow in ' . $repo . ' on the ' . $branch . ' branch');
+      }
+    }
+    catch (RuntimeException $e) {
+
+      // Create file.
+      $this->client->repo()->contents()->create($this->organization, $repo, $path, $content, $message, $branch);
+      $this->log('Created workflow in ' . $repo . ' on the ' . $branch . ' branch');
+    }
   }
 
   /**
