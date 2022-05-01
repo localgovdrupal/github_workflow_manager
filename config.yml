@@ -1,0 +1,17 @@
+##
+# Configuration file for LocalGov Drupal.
+---
+organization: 'localgovdrupal'
+drupal_versions:
+  - '~9.3'
+php_versions:
+  - '7.4'
+  - '8.1'
+base_projects:
+  localgov_project:
+    template: 'test_localgov.yml'
+    workflow_file: '.github/workflows/test.yml'
+    versions:
+      - '2.x'
+default_branch_prefix: 'fix/github-workflow-update-'
+default_branch_date_prefix: 'Y-m-d'
