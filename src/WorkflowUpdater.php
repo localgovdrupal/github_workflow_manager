@@ -15,6 +15,13 @@ use LocalGovDrupal\GithubWorkflowManager\TemplateRenderer\TemplateRendererInterf
 class WorkflowUpdater {
 
   /**
+   * GitHub API timeout
+   *
+   * @var int
+   */
+  const TIMEOUT = 2;
+
+  /**
    * Branch name for changes to workflow.
    *
    * @var string
@@ -177,6 +184,7 @@ class WorkflowUpdater {
       ];
       $this->client->git()->references()->create($this->organization, $repo, $params);
       $this->log('Created ' . $branch . ' branch in ' . $repo);
+      sleep(WorkflowUpdater::TIMEOUT);
     }
   }
 
@@ -213,6 +221,7 @@ class WorkflowUpdater {
       ];
       $this->client->pullRequest()->create($this->organization, $repo, $params);
       $this->log('Created pull request in ' . $repo);
+      sleep(WorkflowUpdater::TIMEOUT);
     }
   }
 
@@ -321,6 +330,7 @@ class WorkflowUpdater {
       if ($content != $current_content) {
         $this->client->repo()->contents()->update($this->organization, $repo, $path, $content, $message, $file_info['sha'], $branch);
         $this->log('Updated workflow in ' . $repo . ' on the ' . $branch . ' branch');
+        sleep(WorkflowUpdater::TIMEOUT);
       }
     }
     catch (RuntimeException $e) {
@@ -328,6 +338,7 @@ class WorkflowUpdater {
       // Create file.
       $this->client->repo()->contents()->create($this->organization, $repo, $path, $content, $message, $branch);
       $this->log('Created workflow in ' . $repo . ' on the ' . $branch . ' branch');
+      sleep(WorkflowUpdater::TIMEOUT);
     }
   }
 
