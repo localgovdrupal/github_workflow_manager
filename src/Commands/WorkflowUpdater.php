@@ -1,21 +1,33 @@
 <?php
 
-namespace LocalGovDrupal\GithubWorkflowManager;
+namespace LocalGovDrupal\GithubWorkflowManager\Commands;
 
 use Github\AuthMethod;
 use Github\Client;
 use Github\Exception\RuntimeException;
+use LocalGovDrupal\GithubWorkflowManager\Config;
 use LocalGovDrupal\GithubWorkflowManager\TemplateRenderer\LocalGovRenderer;
 use LocalGovDrupal\GithubWorkflowManager\TemplateRenderer\TemplateRendererInterface;
+use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Style\SymfonyStyle;
 
 
 /**
  * Update GitHub workflow files.
  */
-class WorkflowUpdater {
+#[AsCommand(
+  name: 'update-workflow',
+  description: 'Update Github workflow files.',
+  aliases: ['update'],
+  hidden: false
+)]
+class WorkflowUpdater extends Command {
 
   /**
-   * GitHub API timeout
+   * GitHub API timeout.
    *
    * @var int
    */
@@ -43,6 +55,20 @@ class WorkflowUpdater {
   protected Config $config;
 
   /**
+   * Github access token.
+   *
+   * @var string
+   */
+  protected string $github_access_token;
+
+  /**
+   * Symfony IO.
+   *
+   * @var \Symfony\Component\Console\Style\SymfonyStyle
+   */
+  protected $io;
+
+  /**
    * GitHub organization.
    *
    * @var string
@@ -67,14 +93,14 @@ class WorkflowUpdater {
    * Initialise a WorkflowUpdate instance.
    */
   function __construct($github_access_token, $config) {
+    parent::__construct();
 
-    // Initialise GitHub client.
-    $this->client = $this->authenticate($github_access_token);
 
     // Initialise config.
     $this->config = $config;
     $this->branch = $this->config->get_branch();
     $this->organization = $this->config->get('organization');
+    $this->github_access_token = $github_access_token;
 
     // Initialise template renderer.
     $this->renderer = new LocalGovRenderer('templates', $this->config);
@@ -83,7 +109,18 @@ class WorkflowUpdater {
   /**
    * Update workflows.
    */
-  public function run() {
+  public function execute(InputInterface $input, OutputInterface $output): int {
+
+    // Initialise IO.
+    $this->io = new SymfonyStyle($input, $output);
+
+    // Initialise GitHub client.
+    if ($client = $this->authenticate($this->github_access_token)) {
+      $this->client = $client;
+    }
+    else {
+      return Command::FAILURE;
+    }
 
     // Iterate all the configured projects and supported versions.
     $base_project_config = $this->config->get('base_projects');
@@ -133,12 +170,14 @@ class WorkflowUpdater {
           }
 
           // Update workflow and create PR for project.
-          $this->create_branch($project['repo'], $this->branch, $project_version);
-          $this->update_file($project['repo'], $workflow_file, $this->branch, $workflow, 'Updated GitHub workflow');
-          $this->create_pull_request($project['repo'], $project_version, $this->branch, 'Update workflow on ' . $project_version . ' branch');
+          //$this->create_branch($project['repo'], $this->branch, $project_version);
+          //$this->update_file($project['repo'], $workflow_file, $this->branch, $workflow, 'Updated GitHub workflow');
+          //$this->create_pull_request($project['repo'], $project_version, $this->branch, 'Update workflow on ' . $project_version . ' branch');
         }
       }
     }
+
+    return Command::SUCCESS;
   }
 
   /**
@@ -147,12 +186,22 @@ class WorkflowUpdater {
    * @param $github_access_token string
    *   GitHub Access token with repo and workflow scopes.
    *
-   * @return \Github\Client
+   * @return \Github\Client|FALSE
    */
-  protected function authenticate(string $github_access_token): Client {
+  protected function authenticate(string $github_access_token): Client|FALSE {
 
+    // Create client.
     $client = new Client();
     $client->authenticate($github_access_token, NULL, AuthMethod::ACCESS_TOKEN);
+
+    // Check authentication.
+    try {
+      $client->organization()->show($this->organization);
+    }
+    catch (RuntimeException $e) {
+      $this->log('Unable to authenticate with Github: ' . $e->getMessage(), 'error');
+      return FALSE;
+    }
 
     return $client;
   }
@@ -298,12 +347,12 @@ class WorkflowUpdater {
    *
    * @param string $message
    *   Message to log
-   * @param string level
-   *   Message level to log. Defaults NOTICE
+   * @param string type
+   *   Message type to log. One of [info, warning, success, error]. Default info.
    */
-  protected function log(string $message, string $level = 'NOTICE'): void {
+  protected function log(string $message, string $type = 'info'): void {
 
-    print $message . "\n";
+    $this->io->$type($message);
   }
 
   /**

@@ -1,14 +1,18 @@
 #!/usr/bin/env php
 <?php
 /**
- * Update the GitHub workflow files for LocalGov Drupal repos.
+ * Manage GitHub workflow files for LocalGov Drupal repos.
  */
 
 require_once __DIR__ . '/vendor/autoload.php';
 
 use Dotenv\Dotenv;
+use LocalGovDrupal\GithubWorkflowManager\Commands\WorkflowUpdater;
 use LocalGovDrupal\GithubWorkflowManager\Config;
-use LocalGovDrupal\GithubWorkflowManager\WorkflowUpdater;
+use Symfony\Component\Console\Application;
+
+const APPLICATION_NAME = 'github-workflow-manager';
+const VERSION = '1.x';
 
 // Load a GitHub access token.
 $dotenv = Dotenv::createImmutable(__DIR__);
@@ -18,6 +22,7 @@ $github_access_token = $_ENV['GITHUB_ACCESS_TOKEN'];
 // Load config.
 $config = new Config(__DIR__ . '/config.yml');
 
-// Update workflows.
-$updater = new WorkflowUpdater($github_access_token, $config);
-$updater->run();
+// Create and run application.
+$app = new Application(APPLICATION_NAME, VERSION);
+$app->add(new WorkflowUpdater($github_access_token, $config));
+$app->run();
