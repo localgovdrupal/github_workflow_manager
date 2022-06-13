@@ -49,7 +49,7 @@ jobs:
           echo "GIT_BASE=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
           echo "GIT_BRANCH=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
 {% if project_type != 'project' %}
-          echo "HEAD_USER=localgovdrupal >> $GITHUB_ENV
+          echo "HEAD_USER=localgovdrupal" >> $GITHUB_ENV
 {% endif %}
 
       - name: Save git branch and git repo names to env if this is a pull request
