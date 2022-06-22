@@ -10,7 +10,9 @@ use LocalGovDrupal\GithubWorkflowManager\TemplateRenderer\LocalGovRenderer;
 use LocalGovDrupal\GithubWorkflowManager\TemplateRenderer\TemplateRendererInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -19,9 +21,9 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  * Update GitHub workflow files.
  */
 #[AsCommand(
-  name: 'update-workflow',
+  name: 'update',
   description: 'Update Github workflow files.',
-  aliases: ['update'],
+  aliases: ['up'],
   hidden: false
 )]
 class WorkflowUpdater extends Command {
@@ -95,7 +97,6 @@ class WorkflowUpdater extends Command {
   function __construct($github_access_token, $config) {
     parent::__construct();
 
-
     // Initialise config.
     $this->config = $config;
     $this->branch = $this->config->get_branch();
@@ -107,12 +108,61 @@ class WorkflowUpdater extends Command {
   }
 
   /**
-   * Update workflows.
+   * @inheritdoc
+   */
+  protected function configure(): void {
+
+    $this
+      ->addArgument(
+        'project',
+        InputArgument::REQUIRED,
+        'Base project, as listed in config.yml, to the apply workflow for. Try \'all\' to apply all listed workflows.'
+      )
+      ->addOption(
+        'check',
+        'c',
+        InputOption::VALUE_NONE,
+        'Check mode. Don\'t make any changes.',
+      )
+//      ->addOption(
+//        'diff',
+//        'd',
+//        InputOption::VALUE_NONE,
+//        'Display diff of any changes.',
+//      )
+//      ->addOption(
+//        'limit',
+//        'l',
+//        InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY,
+//        'Limit to the listed repos.',
+//      )
+      ->addOption(
+        'message',
+        'm',
+        InputOption::VALUE_REQUIRED,
+        'Commit message',
+        'Updated GitHub workflow'
+      );
+  }
+
+  /**
+   * @inheritdoc
    */
   public function execute(InputInterface $input, OutputInterface $output): int {
 
     // Initialise IO.
     $this->io = new SymfonyStyle($input, $output);
+
+    // Check project.
+    $project_to_update = $input->getArgument('project');
+    $base_project_config = $this->config->get('base_projects');
+    if ($project_to_update != 'all' && !in_array($project_to_update, array_keys($base_project_config))) {
+      $this->log('Project not listed in config. Try \'all\' to apply all projects.', 'error');
+      return Command::INVALID;
+    }
+
+    // Set flags.
+    $this->check = $input->getOption('check');
 
     // Initialise GitHub client.
     if ($client = $this->authenticate($this->github_access_token)) {
@@ -122,9 +172,18 @@ class WorkflowUpdater extends Command {
       return Command::FAILURE;
     }
 
+    // Set projects to update.
+    if ($project_to_update == 'all') {
+      $updates = $base_project_config;
+    }
+    else {
+      $updates = [
+        $project_to_update => $base_project_config[$project_to_update],
+      ];
+    }
+
     // Iterate all the configured projects and supported versions.
-    $base_project_config = $this->config->get('base_projects');
-    foreach($base_project_config as $base_project => $config) {
+    foreach($updates as $base_project => $config) {
 
       // Get organization packages required by base project.
       $this->log('Fetching composer dependency tree for ' . $base_project);
@@ -170,9 +229,9 @@ class WorkflowUpdater extends Command {
           }
 
           // Update workflow and create PR for project.
-          //$this->create_branch($project['repo'], $this->branch, $project_version);
-          //$this->update_file($project['repo'], $workflow_file, $this->branch, $workflow, 'Updated GitHub workflow');
-          //$this->create_pull_request($project['repo'], $project_version, $this->branch, 'Update workflow on ' . $project_version . ' branch');
+          $this->create_branch($project['repo'], $this->branch, $project_version);
+          $this->update_file($project['repo'], $workflow_file, $this->branch, $workflow, $input->getOption('message'));
+          $this->create_pull_request($project['repo'], $project_version, $this->branch, 'Update workflow on ' . $project_version . ' branch');
         }
       }
     }
@@ -231,9 +290,12 @@ class WorkflowUpdater extends Command {
         'ref' => 'refs/heads/' . $branch,
         'sha' => $source_info['object']['sha'],
       ];
-      $this->client->git()->references()->create($this->organization, $repo, $params);
-      $this->log('Created ' . $branch . ' branch in ' . $repo);
-      sleep(WorkflowUpdater::TIMEOUT);
+      if (!$this->check) {
+        $this->client->git()->references()->create($this->organization, $repo, $params);
+        sleep(WorkflowUpdater::TIMEOUT);
+      }
+      $this->log('Created ' . $branch . ' branch in ' . $repo, 'comment');
+
     }
   }
 
@@ -268,9 +330,11 @@ class WorkflowUpdater extends Command {
         'title' => $title,
         'body' => $body,
       ];
-      $this->client->pullRequest()->create($this->organization, $repo, $params);
-      $this->log('Created pull request in ' . $repo);
-      sleep(WorkflowUpdater::TIMEOUT);
+      if (!$this->check) {
+        $this->client->pullRequest()->create($this->organization, $repo, $params);
+        sleep(WorkflowUpdater::TIMEOUT);
+      }
+      $this->log('Created pull request in ' . $repo, 'comment');
     }
   }
 
@@ -329,7 +393,7 @@ class WorkflowUpdater extends Command {
             $r = str_replace($this->organization . '/', '', $package);
             $v = $this->version_to_branch($v);
             if (!in_array($r, array_keys($projects))) {
-              $projects += $this->get_composer_config($r, $v, $projects);
+              //$projects += $this->get_composer_config($r, $v, $projects);
             }
           }
         }
@@ -352,7 +416,7 @@ class WorkflowUpdater extends Command {
    */
   protected function log(string $message, string $type = 'info'): void {
 
-    $this->io->$type($message);
+    $this->io->write("<${type}>${message}</>", TRUE);
   }
 
   /**
@@ -377,17 +441,21 @@ class WorkflowUpdater extends Command {
       $file_info = $this->client->repo()->contents()->show($this->organization, $repo, $path, $branch);
       $current_content = base64_decode($file_info['content']);
       if ($content != $current_content) {
-        $this->client->repo()->contents()->update($this->organization, $repo, $path, $content, $message, $file_info['sha'], $branch);
-        $this->log('Updated workflow in ' . $repo . ' on the ' . $branch . ' branch');
-        sleep(WorkflowUpdater::TIMEOUT);
+        if (!$this->check) {
+          $this->client->repo()->contents()->update($this->organization, $repo, $path, $content, $message, $file_info['sha'], $branch);
+          sleep(WorkflowUpdater::TIMEOUT);
+        }
+        $this->log('Updated workflow in ' . $repo . ' on the ' . $branch . ' branch', 'comment');
       }
     }
     catch (RuntimeException $e) {
 
       // Create file.
-      $this->client->repo()->contents()->create($this->organization, $repo, $path, $content, $message, $branch);
-      $this->log('Created workflow in ' . $repo . ' on the ' . $branch . ' branch');
-      sleep(WorkflowUpdater::TIMEOUT);
+      if (!$this->check) {
+        $this->client->repo()->contents()->create($this->organization, $repo, $path, $content, $message, $branch);
+        sleep(WorkflowUpdater::TIMEOUT);
+      }
+      $this->log('Created workflow in ' . $repo . ' on the ' . $branch . ' branch', 'comment');
     }
   }
 
