@@ -227,7 +227,7 @@ class WorkflowUpdater extends Command {
           try {
             $current_workflow = $this->fetch_file($project['repo'], $workflow_file, $project_version);
             if ($current_workflow == $workflow) {
-              $this->log('OK ' . $project['repo'], 'comment');
+              $this->log('OK ' . $project['repo'], 'info');
               continue;
             }
           }

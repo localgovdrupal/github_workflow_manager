@@ -14,6 +14,10 @@ on:
 {% for version in package_versions %}
       - '{{ version }}'
 {% endfor %}
+{% if project_type == 'project' %}
+  schedule:
+    - cron: "0 7 * * *"
+{% endif %}
 
 env:
   LOCALGOV_DRUPAL_PROJECT: {{ project_name }}
