@@ -36,13 +36,6 @@ class WorkflowUpdater extends Command {
   const TIMEOUT = 2;
 
   /**
-   * Branch name for changes to workflow.
-   *
-   * @var string
-   */
-  protected string $branch;
-
-  /**
    * GitHub client.
    *
    * @var \Github\Client
@@ -99,7 +92,6 @@ class WorkflowUpdater extends Command {
 
     // Initialise config.
     $this->config = $config;
-    $this->branch = $this->config->get_branch();
     $this->organization = $this->config->get('organization');
     $this->github_access_token = $github_access_token;
 
@@ -117,6 +109,12 @@ class WorkflowUpdater extends Command {
         'project',
         InputArgument::REQUIRED,
         'Base project, as listed in config.yml, to the apply workflow for. Try \'all\' to apply all listed workflows.'
+      )
+      ->addOption(
+        'branch',
+        'b',
+        InputOption::VALUE_REQUIRED,
+        'Override branch name in config when making changes.',
       )
       ->addOption(
         'check',
@@ -163,6 +161,14 @@ class WorkflowUpdater extends Command {
 
     // Set flags.
     $this->check = $input->getOption('check');
+
+    // Check branch name.
+    if ($input->getOption('branch')) {
+      $branch  = $input->getOption('branch');
+    }
+    else {
+      $branch = $this->config->get_branch();
+    }
 
     // Initialise GitHub client.
     if ($client = $this->authenticate($this->github_access_token)) {
@@ -221,6 +227,7 @@ class WorkflowUpdater extends Command {
           try {
             $current_workflow = $this->fetch_file($project['repo'], $workflow_file, $project_version);
             if ($current_workflow == $workflow) {
+              $this->log('OK ' . $project['repo'], 'comment');
               continue;
             }
           }
@@ -229,9 +236,9 @@ class WorkflowUpdater extends Command {
           }
 
           // Update workflow and create PR for project.
-          $this->create_branch($project['repo'], $this->branch, $project_version);
-          $this->update_file($project['repo'], $workflow_file, $this->branch, $workflow, $input->getOption('message'));
-          $this->create_pull_request($project['repo'], $project_version, $this->branch, 'Update workflow on ' . $project_version . ' branch');
+          $this->create_branch($project['repo'], $branch, $project_version);
+          $this->update_file($project['repo'], $workflow_file, $branch, $workflow, $input->getOption('message'));
+          $this->create_pull_request($project['repo'], $project_version, $branch, 'Update ' . $workflow_file . ' workflow on ' . $project_version . ' branch');
         }
       }
     }
@@ -295,7 +302,6 @@ class WorkflowUpdater extends Command {
         sleep(WorkflowUpdater::TIMEOUT);
       }
       $this->log('Created ' . $branch . ' branch in ' . $repo, 'comment');
-
     }
   }
 
@@ -393,7 +399,7 @@ class WorkflowUpdater extends Command {
             $r = str_replace($this->organization . '/', '', $package);
             $v = $this->version_to_branch($v);
             if (!in_array($r, array_keys($projects))) {
-              //$projects += $this->get_composer_config($r, $v, $projects);
+              $projects += $this->get_composer_config($r, $v, $projects);
             }
           }
         }
