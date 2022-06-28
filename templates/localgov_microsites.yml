@@ -1,7 +1,7 @@
 ##
 # Managed by https://github.com/localgovdrupal/github_workflow_manager
 ---
-name: Test {{ project_name }} {{ project_type }}
+name: Test LocalGov Microsites {{ project_name }} {{ project_type }}
 
 on:
   push:
@@ -14,10 +14,6 @@ on:
 {% for version in package_versions %}
       - '{{ version }}'
 {% endfor %}
-{% if project_type == 'project' %}
-  schedule:
-    - cron: "0 7 * * *"
-{% endif %}
 
 env:
   LOCALGOV_DRUPAL_PROJECT: {{ project_name }}
@@ -26,7 +22,7 @@ env:
 jobs:
 
   build:
-    name: Install LocalGov Drupal
+    name: Install LocalGov Microsites
     runs-on: ubuntu-latest
 
     strategy:
@@ -77,7 +73,7 @@ jobs:
       - name: Get the latest tagged release for branch version
         run: |
           LATEST_RELEASE=$(curl -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/${GITHUB_REPOSITORY}/git/matching-refs/tags/${GIT_BASE%'.x'} | grep -Po '(?<=refs/tags/)[^"]+' | tail -1)
-          if [ -z $LATEST_RELEASE ]; then LATEST_RELEASE=1; fi
+          if [ -z $LATEST_RELEASE ]; then LATEST_RELEASE=1.x-dev; fi
           echo "LATEST_RELEASE=${LATEST_RELEASE}" >> $GITHUB_ENV
 
       - name: Cached workspace
@@ -97,13 +93,13 @@ jobs:
           repository: localgovdrupal/drupal-container
           ref: php${{ '{{' }} matrix.php-version {{ '}}' }}
 
-      - name: Create LocalGov Drupal project
+      - name: Create LocalGov Microsites project
 {% if  project_type == 'project' %}
-        run: composer create-project --stability dev localgovdrupal/localgov-project:${COMPOSER_REF} ./html
+        run: composer create-project --stability dev localgovdrupal/localgov_microsites_project:${COMPOSER_REF} ./html
 {% else %}
         run: |
-          composer create-project --stability dev --no-install localgovdrupal/localgov-project ./html "${{ '{{' }} matrix.localgov-version {{ '}}' }}"
-          composer --working-dir=./html require --no-install localgovdrupal/localgov:${{ '{{' }} matrix.localgov-version {{ '}}' }}-dev
+          composer create-project --stability dev --no-install localgovdrupal/localgov_microsites_project ./html "${{ '{{' }} matrix.localgov-version {{ '}}' }}"
+          composer --working-dir=./html require --no-install localgovdrupal/localgov_microsites:${{ '{{' }} matrix.localgov-version {{ '}}' }}-dev
           composer --working-dir=./html require --no-install drupal/core-recommended:${{ '{{' }} matrix.drupal-version {{ '}}' }} drupal/core-composer-scaffold:${{ '{{' }} matrix.drupal-version {{ '}}' }} drupal/core-project-message:${{ '{{' }} matrix.drupal-version {{ '}}' }} drupal/core-dev:${{ '{{' }} matrix.drupal-version {{ '}}' }}
           composer --working-dir=./html install
 

@@ -13,5 +13,10 @@ base_projects:
     workflow_file: '.github/workflows/test.yml'
     versions:
       - '2.x'
+  localgov_microsites_project:
+    template: 'localgov_microsites.yml'
+    workflow_file: '.github/workflows/localgov_microsites.yml'
+    versions:
+      - '1.x'
 default_branch_prefix: 'fix/github-workflow-update-'
 default_branch_date_prefix: 'Y-m-d'
