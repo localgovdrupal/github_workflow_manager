@@ -22,3 +22,10 @@ Create a personal [GitHub access token](https://docs.github.com/en/authenticatio
 ```ini
 GITHUB_ACCESS_TOKEN=my_github_access_token
 ```
+
+## Maintainers
+
+This project is currently maintained by:
+
+ - Stephen Cox: https://github.com/stephen-cox
+ - Finn Lewis: https://github.com/finnlewis
